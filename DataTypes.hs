@@ -13,3 +13,14 @@ type Key = String
 type Value = StackItem
 
 type State = [(Key, Value)]
+
+-- .........................................................................................................
+-- .........................................................................................................
+
+data Aexp = Const Integer | Var String | AddComp Aexp Aexp | SubComp Aexp Aexp | MulComp Aexp Aexp deriving Show
+
+data Bexp = TrueComp | FalseComp | Not Bexp | AndComp Bexp Bexp | LessEq Aexp Aexp | Equals Aexp Aexp deriving Show
+
+data Stm = Assign String Aexp | If Bexp Stm Stm | While Bexp Stm | NoopStm deriving Show
+
+type Program = [Stm]
