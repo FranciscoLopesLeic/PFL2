@@ -39,28 +39,28 @@ compileStm stm = case stm of
   LoopS bexp stm     -> [Loop (compB bexp) (compile stm)]
 
 parse :: String -> Program
-parse str = parseaux (lexer str) []
+parse str = auxiliar (lexer str) []
 
-parseaux :: [String] -> [Stm] -> [Stm]
-parseaux [] stm = stm
-parseaux (a:":=":rest) stm = let x = findjust (elemIndex ";" (a:":=":rest))
-                              in case parseSumOrProdOrIntOrPar (drop 2 (take (x-1) (a:":=":rest))) of
-                                Just (expr,[]) -> parseaux (drop x (a:":=":rest)) (stm++[Assign a expr])
-                                Nothing -> error "Parse Error"
-                                _ -> error "Parse Error"
-parseaux ("(":rest) stm = parseaux (drop (findjust (elemIndex ")" ("(":rest))) ("(":rest)) (stm++parseaux (drop 1 (take (findjust (elemIndex ")" ("(":rest))-1) ("(":rest))) [])
-parseaux (";":rest) stm = parseaux rest stm
-parseaux ("if":rest) stm = let thenpos = findjust (elemIndex "then" ("if":rest))
-                               elsepos = findjust (elemIndex "else" ("if":rest))
-                               arrayafter = drop elsepos ("if":rest)
-                            in case takefirstelement arrayafter of
-                              "(" -> parseaux (drop (findjust (elemIndex ")" arrayafter)) arrayafter) (stm++[BranchS (findjustB (parseEqualsBoolandAndComp (checkifPar (drop 1 (take (thenpos-1) ("if":rest)))))) (parseaux (drop thenpos (take (elsepos-1) ("if":rest))) []) (parseaux (take (findjust (elemIndex ")" arrayafter)) arrayafter ) [] )])
-                              _  -> parseaux (drop (findjust (elemIndex ";" arrayafter)) arrayafter) (stm++[BranchS (findjustB (parseEqualsBoolandAndComp (checkifPar (drop 1 (take (thenpos-1) ("if":rest)))))) (parseaux (drop thenpos (take (elsepos-1) ("if":rest))) []) (parseaux (take (findjust (elemIndex ";" arrayafter)) arrayafter ) [] )])
-parseaux ("while":rest) stm = let dopos = findjust (elemIndex "do" ("while":rest))
-                                  arrayafter = drop dopos ("while":rest)
-                              in case takefirstelement arrayafter of
-                                "(" -> parseaux (drop (findjust (elemIndex ")" arrayafter)) arrayafter) (stm++[LoopS (findjustB (parseEqualsBoolandAndComp (checkifPar (drop 1 (take (dopos-1) ("while":rest)))))) (parseaux (take (findjust (elemIndex ")" arrayafter)) arrayafter ) [] )])
-                                _ -> parseaux (drop (findjust (elemIndex ";" arrayafter)) arrayafter) (stm++[LoopS (findjustB (parseEqualsBoolandAndComp (checkifPar (drop 1 (take (dopos-1) ("while":rest)))))) (parseaux (take (findjust (elemIndex ";" arrayafter)) arrayafter ) [] )])
+auxiliar :: [String] -> [Stm] -> [Stm]
+auxiliar [] stm = stm
+auxiliar (a:":=":rest) stm = let x = findjust (elemIndex ";" (a:":=":rest))
+                              in case parseAddOrMulOrInteiroOrPar (drop 2 (take (x-1) (a:":=":rest))) of -- Case Add/Mul/inteiro/Par
+                                Just (expr,[]) -> auxiliar (drop x (a:":=":rest)) (stm++[Assign a expr]) -- Case Add/Mul/inteiro/Par
+                                Nothing -> error "Parse Error" -- Case Add/Mul/inteiro/Par
+                                _ -> error "Parse Error" -- Case Add/Mul/inteiro/Par
+auxiliar ("(":rest) stm = auxiliar (drop (findjust (elemIndex ")" ("(":rest))) ("(":rest)) (stm++auxiliar (drop 1 (take (findjust (elemIndex ")" ("(":rest))-1) ("(":rest))) [])
+auxiliar (";":rest) stm = auxiliar rest stm
+auxiliar ("if":rest) stm = let indexOfThen = findjust (elemIndex "then" ("if":rest))
+                               indexOfElse = findjust (elemIndex "else" ("if":rest))
+                               postElseArray = drop indexOfElse ("if":rest)
+                            in case limparPrimeiro postElseArray of
+                              "(" -> auxiliar (drop (findjust (elemIndex ")" postElseArray)) postElseArray) (stm++[BranchS (findjustB (parseEqualsBoolandAndComp (isPar (drop 1 (take (indexOfThen-1) ("if":rest)))))) (auxiliar (drop indexOfThen (take (indexOfElse-1) ("if":rest))) []) (auxiliar (take (findjust (elemIndex ")" postElseArray)) postElseArray ) [] )]) -- Case EqualsBool and AndComp
+                              _  -> auxiliar (drop (findjust (elemIndex ";" postElseArray)) postElseArray) (stm++[BranchS (findjustB (parseEqualsBoolandAndComp (isPar (drop 1 (take (indexOfThen-1) ("if":rest)))))) (auxiliar (drop indexOfThen (take (indexOfElse-1) ("if":rest))) []) (auxiliar (take (findjust (elemIndex ";" postElseArray)) postElseArray ) [] )]) -- Case EqualsBool and AndComp
+auxiliar ("while":rest) stm = let dopos = findjust (elemIndex "do" ("while":rest))
+                                  postElseArray = drop dopos ("while":rest)
+                              in case limparPrimeiro postElseArray of
+                                "(" -> auxiliar (drop (findjust (elemIndex ")" postElseArray)) postElseArray) (stm++[LoopS (findjustB (parseEqualsBoolandAndComp (isPar (drop 1 (take (dopos-1) ("while":rest)))))) (auxiliar (take (findjust (elemIndex ")" postElseArray)) postElseArray ) [] )]) -- Case EqualsBool and AndComp
+                                _ -> auxiliar (drop (findjust (elemIndex ";" postElseArray)) postElseArray) (stm++[LoopS (findjustB (parseEqualsBoolandAndComp (isPar (drop 1 (take (dopos-1) ("while":rest)))))) (auxiliar (take (findjust (elemIndex ";" postElseArray)) postElseArray ) [] )]) -- Case EqualsBool and AndComp
 
 
 findjustB :: Maybe (Bexp,[String]) -> Bexp
@@ -68,76 +68,76 @@ findjustB (Just (a,[")"])) = a
 findjustB (Just (a,[])) = a
 findjustB Nothing = error "Parse Error"
 
-checkifPar :: [String] -> [String]
-checkifPar ("(":rest) = drop 1 (take (length ("(":rest)) ("(":rest))
-checkifPar rest = rest
+isPar :: [String] -> [String]
+isPar ("(":rest) = drop 1 (take (length ("(":rest)) ("(":rest))
+isPar rest = rest
 
-takefirstelement :: [String] -> String
-takefirstelement ("(":rest) = "("
-takefirstelement (a:rest) = a
+limparPrimeiro :: [String] -> String
+limparPrimeiro ("(":rest) = "("
+limparPrimeiro (a:rest) = a
 
-parseInt :: [String] -> Maybe (Aexp,[String])
-parseInt (n:rest) =
+parseInteiro :: [String] -> Maybe (Aexp,[String])
+parseInteiro (n:rest) =
   case (readMaybe n :: Maybe Integer) of
     Just f -> Just (Num f, rest)
     Nothing -> Just (Var n,rest)
-parseInt _ = Nothing
+parseInteiro _ = Nothing
 
-parseProdOrInt :: [String] -> Maybe(Aexp,[String])
-parseProdOrInt str =
-  case parseInt str of
+parseInteiroOrMul :: [String] -> Maybe(Aexp,[String])
+parseInteiroOrMul str =
+  case parseInteiro str of
     Just (firstExp,"*":rest1) ->
-      case parseProdOrInt rest1 of
+      case parseInteiroOrMul rest1 of
         Just (secondExp,rest2) ->
           Just (MulComp firstExp secondExp,rest2)
         Nothing                  -> Nothing
     result -> result
 
-parseSumOrProdOrInt :: [String] -> Maybe(Aexp,[String])
-parseSumOrProdOrInt str =
-  case parseProdOrInt str of
+parseInteiroOrAddOrMult :: [String] -> Maybe(Aexp,[String])
+parseInteiroOrAddOrMult str =
+  case parseInteiroOrMul str of
     Just (firstExp,"+":rest1) ->
-      case parseSumOrProdOrInt rest1 of
+      case parseInteiroOrAddOrMult rest1 of
         Just (secondExp,rest2) ->
           Just (AddComp firstExp secondExp,rest2)
         Nothing                  -> Nothing
     Just (firstExp,"-":rest1) ->
-      case parseSumOrProdOrInt rest1 of
+      case parseInteiroOrAddOrMult rest1 of
         Just (secondExp,rest2) ->
           Just (SubComp firstExp secondExp,rest2)
         Nothing                  -> Nothing
     result -> result
 
-parseIntOrParentExpr :: [String] -> Maybe (Aexp,[String])
-parseIntOrParentExpr ("(":rest) =
-  case parseSumOrProdOrIntOrPar rest of
+parseParentOrInteiro :: [String] -> Maybe (Aexp,[String])
+parseParentOrInteiro ("(":rest) =
+  case parseAddOrMulOrInteiroOrPar rest of
     Just (expr,")":rest1) -> Just (expr,rest1)
     Just _ -> Nothing
     Nothing -> Nothing
-parseIntOrParentExpr (n:rest) =
+parseParentOrInteiro (n:rest) =
   case (readMaybe n :: Maybe Integer) of
     Just f -> Just (Num f, rest)
     Nothing -> Just (Var n,rest)
-parseIntOrParentExpr _ = Nothing
+parseParentOrInteiro _ = Nothing
 
-parseProdOrIntOrPar :: [String] -> Maybe (Aexp,[String])
-parseProdOrIntOrPar rest =
-  case parseIntOrParentExpr rest of
+parseMulOrInteiroOrPar :: [String] -> Maybe (Aexp,[String])
+parseMulOrInteiroOrPar rest =
+  case parseParentOrInteiro rest of
     Just (firstExp,"*":rest1) ->
-      case parseProdOrIntOrPar rest1 of
+      case parseMulOrInteiroOrPar rest1 of
         Just (secondExp,rest2) -> Just (MulComp firstExp secondExp, rest2)
         Nothing -> Nothing
     result -> result
 
-parseSumOrProdOrIntOrPar :: [String] -> Maybe (Aexp,[String])
-parseSumOrProdOrIntOrPar rest =
-  case parseProdOrIntOrPar rest of
+parseAddOrMulOrInteiroOrPar :: [String] -> Maybe (Aexp,[String])
+parseAddOrMulOrInteiroOrPar rest =
+  case parseMulOrInteiroOrPar rest of
     Just (firstExp,"+":rest1) ->
-      case parseSumOrProdOrIntOrPar rest1 of
+      case parseAddOrMulOrInteiroOrPar rest1 of
         Just (secondExp,rest2) -> Just (AddComp firstExp secondExp, rest2)
         Nothing -> Nothing
     Just (firstExp,"-":rest1) ->
-      case parseSumOrProdOrIntOrPar rest1 of
+      case parseAddOrMulOrInteiroOrPar rest1 of
         Just (secondExp,rest2) -> Just (SubComp firstExp secondExp, rest2)
         Nothing -> Nothing
     result -> result
@@ -153,14 +153,14 @@ parseAnyOperatorB ("(":rest) =
 parseAnyOperatorB ("True":rest) = Just (TrueComp,rest)
 parseAnyOperatorB ("False":rest) = Just (FalseComp,rest)
 parseAnyOperatorB rest =
-  case parseSumOrProdOrIntOrPar rest of
+  case parseAddOrMulOrInteiroOrPar rest of
     Just (firstExp,"<=":rest1) ->
-      case parseSumOrProdOrIntOrPar rest1 of
+      case parseAddOrMulOrInteiroOrPar rest1 of
         Just (secondExp,rest2) ->
           Just (LessEq firstExp secondExp, rest2)
         Nothing -> Nothing
     Just (firstExp,"==":rest1) ->
-      case parseSumOrProdOrIntOrPar rest1 of
+      case parseAddOrMulOrInteiroOrPar rest1 of
         Just (secondExp,rest2) ->
           Just (Equals firstExp secondExp, rest2)
         Nothing -> Nothing
