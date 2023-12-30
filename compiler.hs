@@ -2,12 +2,12 @@ module Compiler where
 
 import DataTypes
 import Debug.Trace
-import Data.List ( sortBy, elemIndex )
+import Data.List ( sortBy, elemIndex, isPrefixOf )
 import Data.Ord (comparing)
 import Text.Read (readMaybe)
 import qualified Data.Text as T
 import Utils
-import Data.Char (isDigit, isAlpha)
+import Data.Char (isDigit, isAlpha, isSpace, isAlphaNum)
 
 -- Part 2
 -- TODO: Define the types Aexp, Bexp, Stm and Program
@@ -29,17 +29,22 @@ compB (EqualsBool a b) = compB a ++ compB b ++ [Equ]
 compB TrueComp = [Tru]
 compB FalseComp = [Fals]
 
-compile :: Program -> Code
-compile = concatMap compileStm
+compile :: [Stm] -> Code
+compile program = 
+    let compiledCode = compileStm program
+    in trace ("Compiled code: " ++ show compiledCode) compiledCode
 
-compileStm :: Stm -> Code
-compileStm stm = case stm of
-  Assign var aexp -> compA aexp ++ [Store var]
-  BranchS bexp stm1 stm2  -> compB bexp ++ [Branch (compile stm1) (compile stm2)]
-  LoopS bexp stm     -> [Loop (compB bexp) (compile stm)]
+compileStm :: [Stm] -> Code
+compileStm [] = []
+compileStm (stm:rest) = case stm of
+  Assign var aexp -> compA aexp ++ [Store var] ++ compileStm rest
+  BranchS bexp stm1 stm2  -> compB bexp ++ [Branch (compileStm stm1) (compileStm stm2)] ++ compileStm rest
+  LoopS bexp stm     -> Loop (compB bexp) (compileStm stm) : compileStm rest
+  If bexp stm1 stm2 -> compB bexp ++ [Branch (compileStm [stm1]) (compileStm [stm2])] ++ compileStm rest
+  Seq stm -> compileStm stm ++ compileStm rest
 
 parse :: String -> Program
-parse str = auxiliar (lexer str) []
+parse str = auxiliar (debugger str) []
 
 auxiliar :: [String] -> [Stm] -> [Stm]
 auxiliar [] stm = stm
@@ -197,67 +202,36 @@ parseEqualsBoolandAndComp rest =
 findjust :: Num a => Maybe a -> a
 findjust (Just a) = a+1
 
-lexer :: String -> [String]
-lexer string = lexeraux string [] []
+keywords :: [String]
+keywords = ["then", "while", "if", "do", "not", "else", "and"]
 
-lexeraux :: String -> [String] -> String -> [String]
-lexeraux [] aux auxiliar | auxiliar == "" =  aux
-                       | otherwise = aux++[auxiliar]
-lexeraux ('w':'h':'i':'l':'e':rest) aux auxiliar
-                            | auxiliar == "" = lexeraux rest (aux++["while"]) auxiliar
-                            | otherwise = lexeraux rest (aux++[auxiliar]++["while"]) []
-lexeraux (' ':rest) aux auxiliar
-                            | auxiliar == "" = lexeraux rest aux []
-                            | otherwise = lexeraux rest (aux++[auxiliar]) []
-lexeraux ('i':'f':rest) aux auxiliar
-                            | auxiliar == "" = lexeraux rest (aux++["if"]) auxiliar
-                            | otherwise = lexeraux rest (aux++[auxiliar]++["if"]) []
-lexeraux ('t':'h':'e':'n':rest) aux auxiliar
-                            | auxiliar == "" = lexeraux rest (aux++["then"]) auxiliar
-                            | otherwise = lexeraux rest (aux++[auxiliar]++["then"]) []
-lexeraux ('e':'l':'s':'e':rest) aux auxiliar
-                            | auxiliar == "" = lexeraux rest (aux++["else"]) auxiliar
-                            | otherwise = lexeraux rest (aux++[auxiliar]++["else"]) []
-lexeraux ('*':rest) aux auxiliar
-                            | auxiliar == "" = lexeraux rest (aux++["*"]) auxiliar
-                            | otherwise = lexeraux rest (aux++[auxiliar]++["*"]) []
-lexeraux ('+':rest) aux auxiliar
-                            | auxiliar == "" = lexeraux rest (aux++["+"]) auxiliar
-                            | otherwise = lexeraux rest (aux++[auxiliar]++["+"]) []
-lexeraux ('/':rest) aux auxiliar
-                            | auxiliar == "" = lexeraux rest (aux++["/"]) auxiliar
-                            | otherwise = lexeraux rest (aux++[auxiliar]++["/"]) []
-lexeraux ('-':rest) aux auxiliar
-                            | auxiliar == "" = lexeraux rest (aux++["-"]) auxiliar
-                            | otherwise = lexeraux rest (aux++[auxiliar]++["-"]) []
-lexeraux (';':rest) aux auxiliar
-                            | auxiliar == "" = lexeraux rest (aux++[";"]) auxiliar
-                            | otherwise = lexeraux rest (aux++[auxiliar]++[";"]) []
-lexeraux ('(':rest) aux auxiliar
-                            | auxiliar == "" = lexeraux rest (aux++["("]) auxiliar
-                            | otherwise = lexeraux rest (aux++[auxiliar]++["("]) []
-lexeraux (')':rest) aux auxiliar
-                            | auxiliar == "" = lexeraux rest (aux++[")"]) auxiliar
-                            | otherwise = lexeraux rest (aux++[auxiliar]++[")"]) []
-lexeraux ('<':'=':rest) aux auxiliar
-                            | auxiliar == "" = lexeraux rest (aux++["<="]) auxiliar
-                            | otherwise = lexeraux rest (aux++[auxiliar]++["<="]) []
-lexeraux ('=':'=':rest) aux auxiliar
-                            | auxiliar == "" = lexeraux rest (aux++["=="]) auxiliar
-                            | otherwise = lexeraux rest (aux++[auxiliar]++["=="]) []
-lexeraux ('n':'o':'t':rest) aux auxiliar
-                            | auxiliar == "" = lexeraux rest (aux++["not"]) auxiliar
-                            | otherwise = lexeraux rest (aux++[auxiliar]++["not"]) []
-lexeraux ('=':rest) aux auxiliar
-                            | auxiliar == "" = lexeraux rest (aux++["="]) auxiliar
-                            | otherwise = lexeraux rest (aux++[auxiliar]++["="]) []
-lexeraux ('a':'n':'d':rest) aux auxiliar
-                            | auxiliar == "" = lexeraux rest (aux++["and"]) auxiliar
-                            | otherwise = lexeraux rest (aux++[auxiliar]++["and"]) []
-lexeraux (':':'=':rest) aux auxiliar
-                            | auxiliar == "" = lexeraux rest (aux++[":="]) auxiliar
-                            | otherwise = lexeraux rest (aux++[auxiliar]++[":="]) []
-lexeraux ('d':'o':rest) aux auxiliar
-                            | auxiliar == "" = lexeraux rest (aux++["do"]) auxiliar
-                            | otherwise = lexeraux rest (aux++[auxiliar]++["do"]) []
-lexeraux (a:rest) aux auxiliar = lexeraux rest aux (auxiliar++[a])
+operadores :: [String]
+operadores = ["==", ":=", "<=", "+", "-", "*", "/", "="]
+
+lexer :: String -> [String]
+lexer [] = []
+lexer str@(c:cs)
+    | isSpace c = lexer cs
+    | isAlpha c = let (palavra, rest) = span isAlphaNum str in palavra : lexer rest
+    | isDigit c = let (digito, rest) = span isDigit str in digito : lexer rest
+    | otherwise = lexerSymbol str
+
+lexerSymbol :: String -> [String]
+lexerSymbol [] = []
+lexerSymbol str = case getmatch str operadores of
+    Just op -> op : lexer (drop (length op) str)
+    Nothing -> [head str] : lexer (tail str)
+
+getmatch :: String -> [String] -> Maybe String
+getmatch str = foldr (\op acc -> if op `isPrefixOf` str then Just op else acc) Nothing
+
+convertToString :: Simbolo -> String
+convertToString (Keyword kw) = kw
+convertToString (Operador op) = op
+convertToString (Symbol simbolo) = simbolo
+convertToString (Identifier id) = id
+convertToString (Number num) = num
+
+debugger :: String -> [String]
+debugger input = let simbolos = lexer input
+                   in traceShow simbolos simbolos
