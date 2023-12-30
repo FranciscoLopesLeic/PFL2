@@ -33,4 +33,4 @@ run (Branch c1 c2: codigoRestante,Booleano boole:stackRestante,state)
                                                     | otherwise = run (c2 ++ codigoRestante,stackRestante,state)
 run (Noop: codigoRestante,stack,state) = run (codigoRestante,stack,state)
 run (Loop c1 c2: codigoRestante,stack,state) = run ((c1 ++ [Branch (c2 ++ [Loop c1 c2]) [Noop]]) ++ codigoRestante,stack,state)
-run (codigoRestante,stack,state) = error $ "Run-time error"
+run (codigoRestante,stack,state) = error "Run-time error"

@@ -10,12 +10,10 @@ import Utils
 import Data.Char (isDigit, isAlpha)
 
 -- Part 2
-
 -- TODO: Define the types Aexp, Bexp, Stm and Program
-
 -- compA :: Aexp -> Code
-compA :: Aexp -> Code
 
+compA :: Aexp -> Code
 compA (Num a) = [Push a]
 compA (Var a) = [Fetch a]
 compA (AddComp a b) = compA b ++ compA a ++ [Add]
@@ -23,11 +21,11 @@ compA (SubComp a b) = compA b ++ compA a ++ [Sub]
 compA (MulComp a b) = compA b ++ compA a ++ [Mult]
 
 compB :: Bexp -> Code
-compB (Equals a b) = compA b ++ compA a ++ [Equ]
+compB (Equals a b) = compA a ++ compA b ++ [Equ]
 compB (LessEq a b) = compA b ++ compA a ++ [Le]
-compB (AndComp a b) = compB b ++ compB a ++ [And]
+compB (AndComp a b) = compB a ++ compB b ++ [And]
 compB (NegComp a) = compB a ++ [Neg]
-compB (EqualsBool a b) = compB b ++ compB a ++ [Equ]
+compB (EqualsBool a b) = compB a ++ compB b ++ [Equ]
 compB TrueComp = [Tru]
 compB FalseComp = [Fals]
 
@@ -45,30 +43,30 @@ parse str = parseaux (lexer str) []
 
 parseaux :: [String] -> [Stm] -> [Stm]
 parseaux [] stm = stm
-parseaux (a:":=":rest) stm = let x = getjustvalue (elemIndex ";" (a:":=":rest))
+parseaux (a:":=":rest) stm = let x = findjust (elemIndex ";" (a:":=":rest))
                               in case parseSumOrProdOrIntOrPar (drop 2 (take (x-1) (a:":=":rest))) of
                                 Just (expr,[]) -> parseaux (drop x (a:":=":rest)) (stm++[Assign a expr])
                                 Nothing -> error "Parse Error"
                                 _ -> error "Parse Error"
-parseaux ("(":rest) stm = parseaux (drop (getjustvalue (elemIndex ")" ("(":rest))) ("(":rest)) (stm++parseaux (drop 1 (take (getjustvalue (elemIndex ")" ("(":rest))-1) ("(":rest))) [])
+parseaux ("(":rest) stm = parseaux (drop (findjust (elemIndex ")" ("(":rest))) ("(":rest)) (stm++parseaux (drop 1 (take (findjust (elemIndex ")" ("(":rest))-1) ("(":rest))) [])
 parseaux (";":rest) stm = parseaux rest stm
-parseaux ("if":rest) stm = let thenpos = getjustvalue (elemIndex "then" ("if":rest))
-                               elsepos = getjustvalue (elemIndex "else" ("if":rest))
+parseaux ("if":rest) stm = let thenpos = findjust (elemIndex "then" ("if":rest))
+                               elsepos = findjust (elemIndex "else" ("if":rest))
                                arrayafter = drop elsepos ("if":rest)
                             in case takefirstelement arrayafter of
-                              "(" -> parseaux (drop (getjustvalue (elemIndex ")" arrayafter)) arrayafter) (stm++[BranchS (getJustvalueBexp (parseAndandBoolEq (checkifPar (drop 1 (take (thenpos-1) ("if":rest)))))) (parseaux (drop thenpos (take (elsepos-1) ("if":rest))) []) (parseaux (take (getjustvalue (elemIndex ")" arrayafter)) arrayafter ) [] )])
-                              _  -> parseaux (drop (getjustvalue (elemIndex ";" arrayafter)) arrayafter) (stm++[BranchS (getJustvalueBexp (parseAndandBoolEq (checkifPar (drop 1 (take (thenpos-1) ("if":rest)))))) (parseaux (drop thenpos (take (elsepos-1) ("if":rest))) []) (parseaux (take (getjustvalue (elemIndex ";" arrayafter)) arrayafter ) [] )])
-parseaux ("while":rest) stm = let dopos = getjustvalue (elemIndex "do" ("while":rest))
+                              "(" -> parseaux (drop (findjust (elemIndex ")" arrayafter)) arrayafter) (stm++[BranchS (findjustB (parseEqualsBoolandAndComp (checkifPar (drop 1 (take (thenpos-1) ("if":rest)))))) (parseaux (drop thenpos (take (elsepos-1) ("if":rest))) []) (parseaux (take (findjust (elemIndex ")" arrayafter)) arrayafter ) [] )])
+                              _  -> parseaux (drop (findjust (elemIndex ";" arrayafter)) arrayafter) (stm++[BranchS (findjustB (parseEqualsBoolandAndComp (checkifPar (drop 1 (take (thenpos-1) ("if":rest)))))) (parseaux (drop thenpos (take (elsepos-1) ("if":rest))) []) (parseaux (take (findjust (elemIndex ";" arrayafter)) arrayafter ) [] )])
+parseaux ("while":rest) stm = let dopos = findjust (elemIndex "do" ("while":rest))
                                   arrayafter = drop dopos ("while":rest)
                               in case takefirstelement arrayafter of
-                                "(" -> parseaux (drop (getjustvalue (elemIndex ")" arrayafter)) arrayafter) (stm++[LoopS (getJustvalueBexp (parseAndandBoolEq (checkifPar (drop 1 (take (dopos-1) ("while":rest)))))) (parseaux (take (getjustvalue (elemIndex ")" arrayafter)) arrayafter ) [] )])
-                                _ -> parseaux (drop (getjustvalue (elemIndex ";" arrayafter)) arrayafter) (stm++[LoopS (getJustvalueBexp (parseAndandBoolEq (checkifPar (drop 1 (take (dopos-1) ("while":rest)))))) (parseaux (take (getjustvalue (elemIndex ";" arrayafter)) arrayafter ) [] )])
+                                "(" -> parseaux (drop (findjust (elemIndex ")" arrayafter)) arrayafter) (stm++[LoopS (findjustB (parseEqualsBoolandAndComp (checkifPar (drop 1 (take (dopos-1) ("while":rest)))))) (parseaux (take (findjust (elemIndex ")" arrayafter)) arrayafter ) [] )])
+                                _ -> parseaux (drop (findjust (elemIndex ";" arrayafter)) arrayafter) (stm++[LoopS (findjustB (parseEqualsBoolandAndComp (checkifPar (drop 1 (take (dopos-1) ("while":rest)))))) (parseaux (take (findjust (elemIndex ";" arrayafter)) arrayafter ) [] )])
 
 
-getJustvalueBexp :: Maybe (Bexp,[String]) -> Bexp
-getJustvalueBexp (Just (a,[")"])) = a
-getJustvalueBexp (Just (a,[])) = a
-getJustvalueBexp Nothing = error "Parse Error"
+findjustB :: Maybe (Bexp,[String]) -> Bexp
+findjustB (Just (a,[")"])) = a
+findjustB (Just (a,[])) = a
+findjustB Nothing = error "Parse Error"
 
 checkifPar :: [String] -> [String]
 checkifPar ("(":rest) = drop 1 (take (length ("(":rest)) ("(":rest))
@@ -88,32 +86,32 @@ parseInt _ = Nothing
 parseProdOrInt :: [String] -> Maybe(Aexp,[String])
 parseProdOrInt str =
   case parseInt str of
-    Just (expr1,"*":restString1) ->
-      case parseProdOrInt restString1 of
-        Just (expr2,restString2) ->
-          Just (MulComp expr1 expr2,restString2)
+    Just (firstExp,"*":rest1) ->
+      case parseProdOrInt rest1 of
+        Just (secondExp,rest2) ->
+          Just (MulComp firstExp secondExp,rest2)
         Nothing                  -> Nothing
     result -> result
 
 parseSumOrProdOrInt :: [String] -> Maybe(Aexp,[String])
 parseSumOrProdOrInt str =
   case parseProdOrInt str of
-    Just (expr1,"+":restString1) ->
-      case parseSumOrProdOrInt restString1 of
-        Just (expr2,restString2) ->
-          Just (AddComp expr1 expr2,restString2)
+    Just (firstExp,"+":rest1) ->
+      case parseSumOrProdOrInt rest1 of
+        Just (secondExp,rest2) ->
+          Just (AddComp firstExp secondExp,rest2)
         Nothing                  -> Nothing
-    Just (expr1,"-":restString1) ->
-      case parseSumOrProdOrInt restString1 of
-        Just (expr2,restString2) ->
-          Just (SubComp expr1 expr2,restString2)
+    Just (firstExp,"-":rest1) ->
+      case parseSumOrProdOrInt rest1 of
+        Just (secondExp,rest2) ->
+          Just (SubComp firstExp secondExp,rest2)
         Nothing                  -> Nothing
     result -> result
 
 parseIntOrParentExpr :: [String] -> Maybe (Aexp,[String])
 parseIntOrParentExpr ("(":rest) =
   case parseSumOrProdOrIntOrPar rest of
-    Just (expr,")":restString1) -> Just (expr,restString1)
+    Just (expr,")":rest1) -> Just (expr,rest1)
     Just _ -> Nothing
     Nothing -> Nothing
 parseIntOrParentExpr (n:rest) =
@@ -125,144 +123,141 @@ parseIntOrParentExpr _ = Nothing
 parseProdOrIntOrPar :: [String] -> Maybe (Aexp,[String])
 parseProdOrIntOrPar rest =
   case parseIntOrParentExpr rest of
-    Just (expr1,"*":restString1) ->
-      case parseProdOrIntOrPar restString1 of
-        Just (expr2,restString2) -> Just (MulComp expr1 expr2, restString2)
+    Just (firstExp,"*":rest1) ->
+      case parseProdOrIntOrPar rest1 of
+        Just (secondExp,rest2) -> Just (MulComp firstExp secondExp, rest2)
         Nothing -> Nothing
     result -> result
 
 parseSumOrProdOrIntOrPar :: [String] -> Maybe (Aexp,[String])
 parseSumOrProdOrIntOrPar rest =
   case parseProdOrIntOrPar rest of
-    Just (expr1,"+":restString1) ->
-      case parseSumOrProdOrIntOrPar restString1 of
-        Just (expr2,restString2) -> Just (AddComp expr1 expr2, restString2)
+    Just (firstExp,"+":rest1) ->
+      case parseSumOrProdOrIntOrPar rest1 of
+        Just (secondExp,rest2) -> Just (AddComp firstExp secondExp, rest2)
         Nothing -> Nothing
-    Just (expr1,"-":restString1) ->
-      case parseSumOrProdOrIntOrPar restString1 of
-        Just (expr2,restString2) -> Just (SubComp expr1 expr2, restString2)
+    Just (firstExp,"-":rest1) ->
+      case parseSumOrProdOrIntOrPar rest1 of
+        Just (secondExp,rest2) -> Just (SubComp firstExp secondExp, rest2)
         Nothing -> Nothing
     result -> result
 
 ------------- PARSE Bexp ----------------
 
-parseLessOrEqOrTrueOrFalseOrParentOrArith :: [String] -> Maybe (Bexp,[String])
-parseLessOrEqOrTrueOrFalseOrParentOrArith ("(":rest) =
-  case parseAndandBoolEq rest of
-    Just (expr,")":restString1) -> Just (expr,restString1)
+parseAnyOperatorB :: [String] -> Maybe (Bexp,[String])
+parseAnyOperatorB ("(":rest) =
+  case parseEqualsBoolandAndComp rest of
+    Just (expr,")":rest1) -> Just (expr,rest1)
     Just _ -> Nothing
     Nothing -> Nothing
-parseLessOrEqOrTrueOrFalseOrParentOrArith ("True":rest) = Just (TrueComp,rest)
-parseLessOrEqOrTrueOrFalseOrParentOrArith ("False":rest) = Just (FalseComp,rest)
-parseLessOrEqOrTrueOrFalseOrParentOrArith rest =
+parseAnyOperatorB ("True":rest) = Just (TrueComp,rest)
+parseAnyOperatorB ("False":rest) = Just (FalseComp,rest)
+parseAnyOperatorB rest =
   case parseSumOrProdOrIntOrPar rest of
-    Just (expr1,"<=":restString1) ->
-      case parseSumOrProdOrIntOrPar restString1 of
-        Just (expr2,restString2) ->
-          Just (LessEq expr1 expr2, restString2)
+    Just (firstExp,"<=":rest1) ->
+      case parseSumOrProdOrIntOrPar rest1 of
+        Just (secondExp,rest2) ->
+          Just (LessEq firstExp secondExp, rest2)
         Nothing -> Nothing
-    Just (expr1,"==":restString1) ->
-      case parseSumOrProdOrIntOrPar restString1 of
-        Just (expr2,restString2) ->
-          Just (Equals expr1 expr2, restString2)
+    Just (firstExp,"==":rest1) ->
+      case parseSumOrProdOrIntOrPar rest1 of
+        Just (secondExp,rest2) ->
+          Just (Equals firstExp secondExp, rest2)
         Nothing -> Nothing
     result -> Nothing
 
-parseNegAndLessAndEq :: [String] -> Maybe(Bexp, [String])
-parseNegAndLessAndEq ("not":rest) =
-    case parseLessOrEqOrTrueOrFalseOrParentOrArith rest of
-      Just (expr1,restString1) ->
-        Just (NegComp expr1,restString1)
+parseLessEqAndEqualsAndNegComp :: [String] -> Maybe(Bexp, [String])
+parseLessEqAndEqualsAndNegComp ("not":rest) =
+    case parseAnyOperatorB rest of
+      Just (firstExp,rest1) ->
+        Just (NegComp firstExp,rest1)
       result -> result
-parseNegAndLessAndEq rest = parseLessOrEqOrTrueOrFalseOrParentOrArith rest
+parseLessEqAndEqualsAndNegComp rest = parseAnyOperatorB rest
 
-parseBoolEqAndNeg :: [String] -> Maybe(Bexp, [String])
-parseBoolEqAndNeg rest =
-  case parseNegAndLessAndEq rest of
-    Just (expr1, "=":restString1) ->
-      case parseBoolEqAndNeg restString1 of
-        Just (expr2, restString2) ->
-          Just (EqualsBool expr1 expr2, restString2)
+parseEqualsBoolandNegComp :: [String] -> Maybe(Bexp, [String])
+parseEqualsBoolandNegComp rest =
+  case parseLessEqAndEqualsAndNegComp rest of
+    Just (firstExp, "=":rest1) ->
+      case parseEqualsBoolandNegComp rest1 of
+        Just (secondExp, rest2) ->
+          Just (EqualsBool firstExp secondExp, rest2)
         Nothing -> Nothing
     result -> result
 
-parseAndandBoolEq :: [String] -> Maybe(Bexp,[String])
-parseAndandBoolEq rest =
-  case parseBoolEqAndNeg rest of
-    Just (expr1, "and":restString1) ->
-      case parseAndandBoolEq restString1 of
-        Just (expr2, restString2) ->
-          Just (AndComp expr1 expr2, restString2)
+parseEqualsBoolandAndComp :: [String] -> Maybe(Bexp,[String])
+parseEqualsBoolandAndComp rest =
+  case parseEqualsBoolandNegComp rest of
+    Just (firstExp, "and":rest1) ->
+      case parseEqualsBoolandAndComp rest1 of
+        Just (secondExp, rest2) ->
+          Just (AndComp firstExp secondExp, rest2)
         Nothing -> Nothing
     result -> result
 
-
------------------------------------------
-
-getjustvalue :: Num a => Maybe a -> a
-getjustvalue (Just a) = a+1
+findjust :: Num a => Maybe a -> a
+findjust (Just a) = a+1
 
 lexer :: String -> [String]
-lexer string = lexeracc string [] []
+lexer string = lexeraux string [] []
 
-lexeracc :: String -> [String] -> String -> [String]
-lexeracc [] acc stracc | stracc == "" =  acc
-                       | otherwise = acc++[stracc]
-lexeracc ('w':'h':'i':'l':'e':rest) acc stracc
-                            | stracc == "" = lexeracc rest (acc++["while"]) stracc
-                            | otherwise = lexeracc rest (acc++[stracc]++["while"]) []
-lexeracc (' ':rest) acc stracc
-                            | stracc == "" = lexeracc rest acc []
-                            | otherwise = lexeracc rest (acc++[stracc]) []
-lexeracc ('i':'f':rest) acc stracc
-                            | stracc == "" = lexeracc rest (acc++["if"]) stracc
-                            | otherwise = lexeracc rest (acc++[stracc]++["if"]) []
-lexeracc ('t':'h':'e':'n':rest) acc stracc
-                            | stracc == "" = lexeracc rest (acc++["then"]) stracc
-                            | otherwise = lexeracc rest (acc++[stracc]++["then"]) []
-lexeracc ('e':'l':'s':'e':rest) acc stracc
-                            | stracc == "" = lexeracc rest (acc++["else"]) stracc
-                            | otherwise = lexeracc rest (acc++[stracc]++["else"]) []
-lexeracc ('*':rest) acc stracc
-                            | stracc == "" = lexeracc rest (acc++["*"]) stracc
-                            | otherwise = lexeracc rest (acc++[stracc]++["*"]) []
-lexeracc ('+':rest) acc stracc
-                            | stracc == "" = lexeracc rest (acc++["+"]) stracc
-                            | otherwise = lexeracc rest (acc++[stracc]++["+"]) []
-lexeracc ('/':rest) acc stracc
-                            | stracc == "" = lexeracc rest (acc++["/"]) stracc
-                            | otherwise = lexeracc rest (acc++[stracc]++["/"]) []
-lexeracc ('-':rest) acc stracc
-                            | stracc == "" = lexeracc rest (acc++["-"]) stracc
-                            | otherwise = lexeracc rest (acc++[stracc]++["-"]) []
-lexeracc (';':rest) acc stracc
-                            | stracc == "" = lexeracc rest (acc++[";"]) stracc
-                            | otherwise = lexeracc rest (acc++[stracc]++[";"]) []
-lexeracc ('(':rest) acc stracc
-                            | stracc == "" = lexeracc rest (acc++["("]) stracc
-                            | otherwise = lexeracc rest (acc++[stracc]++["("]) []
-lexeracc (')':rest) acc stracc
-                            | stracc == "" = lexeracc rest (acc++[")"]) stracc
-                            | otherwise = lexeracc rest (acc++[stracc]++[")"]) []
-lexeracc ('<':'=':rest) acc stracc
-                            | stracc == "" = lexeracc rest (acc++["<="]) stracc
-                            | otherwise = lexeracc rest (acc++[stracc]++["<="]) []
-lexeracc ('=':'=':rest) acc stracc
-                            | stracc == "" = lexeracc rest (acc++["=="]) stracc
-                            | otherwise = lexeracc rest (acc++[stracc]++["=="]) []
-lexeracc ('n':'o':'t':rest) acc stracc
-                            | stracc == "" = lexeracc rest (acc++["not"]) stracc
-                            | otherwise = lexeracc rest (acc++[stracc]++["not"]) []
-lexeracc ('=':rest) acc stracc
-                            | stracc == "" = lexeracc rest (acc++["="]) stracc
-                            | otherwise = lexeracc rest (acc++[stracc]++["="]) []
-lexeracc ('a':'n':'d':rest) acc stracc
-                            | stracc == "" = lexeracc rest (acc++["and"]) stracc
-                            | otherwise = lexeracc rest (acc++[stracc]++["and"]) []
-lexeracc (':':'=':rest) acc stracc
-                            | stracc == "" = lexeracc rest (acc++[":="]) stracc
-                            | otherwise = lexeracc rest (acc++[stracc]++[":="]) []
-lexeracc ('d':'o':rest) acc stracc
-                            | stracc == "" = lexeracc rest (acc++["do"]) stracc
-                            | otherwise = lexeracc rest (acc++[stracc]++["do"]) []
-lexeracc (a:rest) acc stracc = lexeracc rest acc (stracc++[a])
+lexeraux :: String -> [String] -> String -> [String]
+lexeraux [] aux auxiliar | auxiliar == "" =  aux
+                       | otherwise = aux++[auxiliar]
+lexeraux ('w':'h':'i':'l':'e':rest) aux auxiliar
+                            | auxiliar == "" = lexeraux rest (aux++["while"]) auxiliar
+                            | otherwise = lexeraux rest (aux++[auxiliar]++["while"]) []
+lexeraux (' ':rest) aux auxiliar
+                            | auxiliar == "" = lexeraux rest aux []
+                            | otherwise = lexeraux rest (aux++[auxiliar]) []
+lexeraux ('i':'f':rest) aux auxiliar
+                            | auxiliar == "" = lexeraux rest (aux++["if"]) auxiliar
+                            | otherwise = lexeraux rest (aux++[auxiliar]++["if"]) []
+lexeraux ('t':'h':'e':'n':rest) aux auxiliar
+                            | auxiliar == "" = lexeraux rest (aux++["then"]) auxiliar
+                            | otherwise = lexeraux rest (aux++[auxiliar]++["then"]) []
+lexeraux ('e':'l':'s':'e':rest) aux auxiliar
+                            | auxiliar == "" = lexeraux rest (aux++["else"]) auxiliar
+                            | otherwise = lexeraux rest (aux++[auxiliar]++["else"]) []
+lexeraux ('*':rest) aux auxiliar
+                            | auxiliar == "" = lexeraux rest (aux++["*"]) auxiliar
+                            | otherwise = lexeraux rest (aux++[auxiliar]++["*"]) []
+lexeraux ('+':rest) aux auxiliar
+                            | auxiliar == "" = lexeraux rest (aux++["+"]) auxiliar
+                            | otherwise = lexeraux rest (aux++[auxiliar]++["+"]) []
+lexeraux ('/':rest) aux auxiliar
+                            | auxiliar == "" = lexeraux rest (aux++["/"]) auxiliar
+                            | otherwise = lexeraux rest (aux++[auxiliar]++["/"]) []
+lexeraux ('-':rest) aux auxiliar
+                            | auxiliar == "" = lexeraux rest (aux++["-"]) auxiliar
+                            | otherwise = lexeraux rest (aux++[auxiliar]++["-"]) []
+lexeraux (';':rest) aux auxiliar
+                            | auxiliar == "" = lexeraux rest (aux++[";"]) auxiliar
+                            | otherwise = lexeraux rest (aux++[auxiliar]++[";"]) []
+lexeraux ('(':rest) aux auxiliar
+                            | auxiliar == "" = lexeraux rest (aux++["("]) auxiliar
+                            | otherwise = lexeraux rest (aux++[auxiliar]++["("]) []
+lexeraux (')':rest) aux auxiliar
+                            | auxiliar == "" = lexeraux rest (aux++[")"]) auxiliar
+                            | otherwise = lexeraux rest (aux++[auxiliar]++[")"]) []
+lexeraux ('<':'=':rest) aux auxiliar
+                            | auxiliar == "" = lexeraux rest (aux++["<="]) auxiliar
+                            | otherwise = lexeraux rest (aux++[auxiliar]++["<="]) []
+lexeraux ('=':'=':rest) aux auxiliar
+                            | auxiliar == "" = lexeraux rest (aux++["=="]) auxiliar
+                            | otherwise = lexeraux rest (aux++[auxiliar]++["=="]) []
+lexeraux ('n':'o':'t':rest) aux auxiliar
+                            | auxiliar == "" = lexeraux rest (aux++["not"]) auxiliar
+                            | otherwise = lexeraux rest (aux++[auxiliar]++["not"]) []
+lexeraux ('=':rest) aux auxiliar
+                            | auxiliar == "" = lexeraux rest (aux++["="]) auxiliar
+                            | otherwise = lexeraux rest (aux++[auxiliar]++["="]) []
+lexeraux ('a':'n':'d':rest) aux auxiliar
+                            | auxiliar == "" = lexeraux rest (aux++["and"]) auxiliar
+                            | otherwise = lexeraux rest (aux++[auxiliar]++["and"]) []
+lexeraux (':':'=':rest) aux auxiliar
+                            | auxiliar == "" = lexeraux rest (aux++[":="]) auxiliar
+                            | otherwise = lexeraux rest (aux++[auxiliar]++[":="]) []
+lexeraux ('d':'o':rest) aux auxiliar
+                            | auxiliar == "" = lexeraux rest (aux++["do"]) auxiliar
+                            | otherwise = lexeraux rest (aux++[auxiliar]++["do"]) []
+lexeraux (a:rest) aux auxiliar = lexeraux rest aux (auxiliar++[a])
