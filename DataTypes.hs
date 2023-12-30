@@ -6,20 +6,16 @@ data Inst =
   deriving Show
 type Code = [Inst]
 
-data StackItem = Inteiro Integer | Verdadeiro | Falso deriving (Show, Eq)
+data StackItem = Inteiro Integer | Booleano Bool deriving (Show, Eq)
 type Stack = [StackItem]
-
-type Key = String
-type Value = StackItem
-
-type State = [(Key, Value)]
+type State = [(String, StackItem)]
 
 -- .........................................................................................................
 -- .........................................................................................................
 
 data Aexp = Num Integer | Var String | AddComp Aexp Aexp | SubComp Aexp Aexp | MulComp Aexp Aexp deriving Show
 
-data Bexp = TrueComp | FalseComp | Not Bexp | AndComp Bexp Bexp | LessEq Aexp Aexp | Equals Aexp Aexp | EqualsBool Bexp Bexp deriving Show
+data Bexp = TrueComp | FalseComp | NegComp Bexp | AndComp Bexp Bexp | LessEq Aexp Aexp | Equals Aexp Aexp | EqualsBool Bexp Bexp deriving Show
 
 data Stm = Assign String Aexp | LoopS Bexp [Stm] | BranchS Bexp [Stm] [Stm] deriving Show
 
