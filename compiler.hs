@@ -32,7 +32,7 @@ compB FalseComp = [Fals]
 compile :: [Stm] -> Code
 compile program = 
     let compiledCode = compileStm program
-    in trace ("Compiled code: " ++ show compiledCode) compiledCode
+    in  compiledCode
 
 compileStm :: [Stm] -> Code
 compileStm [] = []
@@ -44,7 +44,7 @@ compileStm (stm:rest) = case stm of
   Seq stm -> compileStm stm ++ compileStm rest
 
 parse :: String -> Program
-parse str = auxiliar (debugger str) []
+parse str = auxiliar (lexer str) []
 
 auxiliar :: [String] -> [Stm] -> [Stm]
 auxiliar [] stm = stm
@@ -231,7 +231,3 @@ convertToString (Operador op) = op
 convertToString (Symbol simbolo) = simbolo
 convertToString (Identifier id) = id
 convertToString (Number num) = num
-
-debugger :: String -> [String]
-debugger input = let simbolos = lexer input
-                   in traceShow simbolos simbolos
