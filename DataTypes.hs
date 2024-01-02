@@ -19,7 +19,6 @@ data Bexp = TrueComp | FalseComp | NegComp Bexp | AndComp Bexp Bexp | LessEq Aex
 
 data Stm = Assign String Aexp | LoopS Bexp [Stm] | BranchS Bexp [Stm] [Stm] | If Bexp Stm Stm | Seq [Stm] deriving Show
 
---MUDAR
 data Simbolo = Keyword String | Operador String | Symbol String | Identifier String | Number String deriving Show
 
 instance Eq Simbolo where
