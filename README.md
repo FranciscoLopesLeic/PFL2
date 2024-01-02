@@ -79,8 +79,11 @@ All possible statements such has Assigning a variable, Loop, Conditional Branch,
 - Other types
 
 type Code = [Inst] - Array of instructions
+
 type Stack = [StackItem] - List of stack elements (lika a program pile)
+
 type State = [(String, StackItem)] - Array of tuples with string and the stack item of that string.
+
 type Program = [Stm] - The representation of the program, array of statements
 
 As we refer in the introduction we had to interprete the language by pushing elements to a stack and store them in a state.
