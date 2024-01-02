@@ -54,29 +54,29 @@ instance Eq Simbolo where
 type Program = [Stm]
 ```
 
-*Inst
+- Inst
 
 Our base data type is the Inst data type which represent all possible instructions in the code.
 
 
 
-*StackItem
+- StackItem
 
 Represents the items that can be in stack. Only two types (Integer and Bool).
 
-*Aexp 
+- Aexp 
 
 Represents all arithmetic expressions. Can also be a Integer Num or a Var String.
 
-*Bexp
+- Bexp
 
 Represents all comparision expressions, it can have a value of or True or False and englobes all possible comparisions such as Negation, And comparision, Less or Equal, Equal for Arithmetic expressions and Equal for boolean expressions.
 
-*Stm 
+- Stm 
 
 All possible statements such has Assigning a variable, Loop, Conditional Branch, Ifs. Can also be a misture of a Sequence of Stm
 
-*Other types
+- Other types
 
 type Code = [Inst] - Array of instructions
 type Stack = [StackItem] - List of stack elements (lika a program pile)
